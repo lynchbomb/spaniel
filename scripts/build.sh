@@ -4,5 +4,5 @@
 
 rm -rf exports
 ./node_modules/tslint/bin/tslint src/**/*.ts &&
-broccoli build exports &&
+./node_modules/broccoli-cli/bin/broccoli build exports &&
 npm run stats
