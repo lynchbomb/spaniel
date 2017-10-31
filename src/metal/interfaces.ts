@@ -54,3 +54,10 @@ export interface FrameInterface {
   width: number;
   height: number;
 }
+
+export interface MetaInterface {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}

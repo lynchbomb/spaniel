@@ -54,10 +54,10 @@ export class Frame implements FrameInterface {
       Date.now(),
       W.getScrollTop(),
       W.getScrollLeft(),
-      0,
-      0,
-      W.getWidth(),
-      W.getHeight()
+      W.meta.x,
+      W.meta.y,
+      W.meta.width,
+      W.meta.height
     );
   }
 }
@@ -84,26 +84,45 @@ export abstract class BaseScheduler {
   }
   protected abstract applyQueue(frame: Frame): void;
 
+  /********************************************
+  *********************************************
+
+  [ ALL METHODS BELOW ARE RUNNING RECURSIVELY!! ]
+
+  *********************************************
+  *********************************************/
+
   protected tick() {
     if (this.queue.isEmpty()) {
       this.isTicking = false;
     } else {
+      // remove items from the queue
       if (this.toRemove.length > 0) {
         for (let i = 0; i < this.toRemove.length; i++) {
           this.queue.remove(this.toRemove[i]);
         }
         this.toRemove = [];
       }
+
+      // TODO: Forcing layout!
+      // if the queue has work then flush it
+      // Frame.generate() can force layout / reflow from getBoundingClientRect()
       this.applyQueue(Frame.generate(this.root));
+
+      // recursively call tick again
       this.engine.scheduleRead(this.tick.bind(this));
     }
   }
+
   scheduleWork(callback: Function) {
     this.engine.scheduleWork(callback);
   }
+
   scheduleRead(callback: Function) {
     this.engine.scheduleRead(callback);
   }
+
+  // Can force layout / reflow from getBoundingClientRect()
   queryElement(el: Element, callback: (bcr: ClientRect, frame: Frame) => void) {
     let bcr: ClientRect = null;
     let frame: Frame = null;
@@ -115,12 +134,15 @@ export abstract class BaseScheduler {
       callback(bcr, frame);
     });
   }
+
   unwatch(id: string| Element | Function) {
     this.toRemove.push(id);
   }
+
   unwatchAll() {
     this.queue.clear();
   }
+
   startTicking() {
     if (!this.isTicking) {
       this.isTicking = true;
@@ -167,6 +189,8 @@ export class ElementScheduler extends BaseScheduler implements ElementSchedulerI
     super(customEngine, root);
     this.queue = new DOMQueue();
   }
+
+  // Can force layout / reflow from getBoundingClientRect()
   applyQueue(frame: Frame) {
     for (let i = 0; i < this.queue.items.length; i++) {
       let { callback, el, id } = this.queue.items[i];
@@ -174,6 +198,7 @@ export class ElementScheduler extends BaseScheduler implements ElementSchedulerI
       callback(frame, id, bcr);
     }
   }
+
   watch(el: Element, callback: (frame: FrameInterface, id: string, bcr: ClientRect) => void, id?: string): string {
     this.startTicking();
     id = id || generateToken();
